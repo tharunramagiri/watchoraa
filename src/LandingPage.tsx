@@ -92,8 +92,18 @@ const FEATURES = [
   },
   {
     title: 'SOS that never lies',
-    body: 'Emergency requests are a deterministic log, separate from AI scene analysis. Trusted contacts and a caregiver portal see what you ask them to.',
+    body: 'Emergency requests are a deterministic log, separate from AI scene analysis. Trusted contacts get real SMS and email alerts, and the app tells you exactly what was delivered.',
     tag: 'Trust',
+  },
+  {
+    title: 'Money, colors, expiry dates',
+    body: 'Say "what money is this", "what color is this", or "read the expiry" — daily tasks done by voice. It never guesses between two similar banknotes and always says when lighting makes it unsure.',
+    tag: 'Daily living',
+  },
+  {
+    title: 'A companion, not a command line',
+    body: 'Say "I\'m scared" or "I feel lost" and Watchora responds with practical help, right on your device — never sent anywhere, never interrupting a safety alert.',
+    tag: 'With you',
   },
 ];
 
@@ -226,7 +236,7 @@ export function LandingPage({ onSignIn, onSignUp }: LandingProps) {
                 <h2 className="wispr-heading">What watchora does</h2>
               </Reveal>
               <Reveal delay={80}>
-                <p className="wispr-chamber-sub">Four real capabilities, not four feature-flag placeholders.</p>
+                <p className="wispr-chamber-sub">Real capabilities, verified live — from hazard warnings to reading a banknote.</p>
               </Reveal>
             </div>
             <Reveal delay={140}>
@@ -392,6 +402,8 @@ export function LandingPage({ onSignIn, onSignUp }: LandingProps) {
             <nav className="wispr-footer-links" aria-label="Footer">
               <a href="#wispr-features">What it does</a>
               <a href="#wispr-safety">Safety</a>
+              <a href="/install-guide.html">Install guide</a>
+              <a href="/commitment.html">Our commitment</a>
               <button onClick={onSignIn}>Sign in</button>
             </nav>
           </div>

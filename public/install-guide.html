@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Install Watchora — step-by-step with TalkBack and VoiceOver</title>
+  <style>
+    :root { --ink: #1c1530; --muted: #5b5470; --panel: #f6f2ff; --accent: #6d28d9; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif; color: var(--ink); line-height: 1.65; background: #fffdf8; font-size: 1.05rem; }
+    main { max-width: 46rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 .5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; }
+    h3 { font-size: 1.05rem; margin-bottom: .25rem; }
+    p.updated { color: var(--muted); font-size: .95rem; margin-top: 0; }
+    .panel { background: var(--panel); border-radius: 16px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; }
+    ol li, ul li { margin: .45rem 0; }
+    .step { border-left: 4px solid var(--accent); padding: .25rem 0 .25rem 1rem; margin: 1.25rem 0; }
+    .step h3 { margin-top: 0; }
+    .say { font-weight: 600; color: var(--accent); }
+    strong { color: var(--accent); }
+    a.back { display: inline-block; margin-top: 2rem; color: var(--accent); font-weight: 600; }
+    .skip { position: absolute; left: -9999px; }
+    .skip:focus { left: 1rem; top: 1rem; background: #fff; padding: .5rem 1rem; }
+    kbd { background: #efe9fb; border-radius: 6px; padding: 0 .35rem; font-family: inherit; font-size: .95em; }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to main content</a>
+  <main id="main">
+    <h1>Installing Watchora, step by step</h1>
+    <p class="updated">Written to be used with TalkBack (Android) or VoiceOver (iPhone). Every step says exactly what you will hear and what to do. If any step does not match what your screen reader says, you are not doing anything wrong — phone makers move menus around; use the search at the top of your Settings app.</p>
+
+    <div class="panel">
+      <h2>Before you start — you will need</h2>
+      <ul>
+        <li>Your phone, charged.</li>
+        <li>An internet connection (Wi-Fi or mobile data) for the first install. After that, Watchora's most important safety features keep working with no internet at all.</li>
+        <li>About 10 minutes.</li>
+      </ul>
+    </div>
+
+    <h2>Step 1: Open this page in your browser</h2>
+    <div class="step">
+      <p>If someone sent you this link, open it in Chrome (Android) or Safari (iPhone). Nothing to download yet — Watchora is a web app, which means there is no app store, no account wall, and no storage warning to fight through.</p>
+    </div>
+
+    <h2>Step 2: Install it to your home screen</h2>
+    <h3>Android (Chrome, with TalkBack)</h3>
+    <div class="step">
+      <ol>
+        <li>Tap the <strong>three dots</strong> menu, top-right of the screen. TalkBack says "More options, menu, double-tap to activate." Double-tap.</li>
+        <li>Swipe left, moving through the menu until you hear <strong>"Add to Home screen"</strong> (on some phones: "Install app" or "Add to Home page"). Double-tap.</li>
+        <li>You will hear a name field with "Watchora". Double-tap <strong>Install</strong> or <strong>Add</strong>.</li>
+        <li>TalkBack may say a confirmation. You're done — an icon named <strong>Watchora</strong> is now on your home screen.</li>
+      </ol>
+    </div>
+    <h3>iPhone (Safari, with VoiceOver)</h3>
+    <div class="step">
+      <ol>
+        <li>Tap the <strong>Share button</strong> — VoiceOver calls it "Share, button" — in the toolbar at the bottom of the screen. Double-tap.</li>
+        <li>Flick up or down through the list of actions until you hear <strong>"Add to Home Screen"</strong>. Double-tap.</li>
+        <li>Double-tap <strong>Add</strong> in the top-right corner.</li>
+        <li>VoiceOver confirms, and the Watchora icon appears on your home screen, usually on the last page of apps.</li>
+      </ol>
+    </div>
+
+    <h2>Step 3: Open Watchora from your home screen</h2>
+    <div class="step">
+      <p>Find the <strong>Watchora</strong> icon (you can also dictate "Watchora" into your phone's search). Open it. It launches full-screen, like any app from a store.</p>
+    </div>
+
+    <h2>Step 4: Sign up — by voice</h2>
+    <div class="step">
+      <ol>
+        <li>Tap <strong>Create your account</strong>. The form has three fields: name, email, password. The screen reader announces each field as you reach it.</li>
+        <li>After you sign up, Watchora asks to use your <strong>camera</strong> and <strong>microphone</strong> — say yes to both; they are what make the app work. Your camera is only used on this device unless you deliberately send a picture for a description, and the app always tells you when that happens.</li>
+        <li>Then the app runs a short <strong>voice setup</strong>: it plays a sample, and you choose how fast it speaks. Slower is completely fine — you can change it any time by saying <span class="say">"Speak slower"</span> or <span class="say">"Speak faster"</span>.</li>
+      </ol>
+    </div>
+
+    <h2>Step 5: The first five things to say</h2>
+    <p>Watchora listens for its wake phrase, then your command. Say <span class="say">"Hey Watchora"</span>, then:</p>
+    <div class="panel">
+      <ul>
+        <li><span class="say">"What is ahead of me?"</span> — describes what the camera sees, hazards first.</li>
+        <li><span class="say">"Read this"</span> — reads a label, letter, or screen aloud. Works offline.</li>
+        <li><span class="say">"What color is this?"</span> — identifies a color (clothes, objects).</li>
+        <li><span class="say">"Start a safe journey to the pharmacy"</span> — your caregiver can watch your progress live.</li>
+        <li><span class="say">"Emergency"</span> — opens the SOS flow. Watchora will ask you to confirm, so it can never fire by accident.</li>
+      </ul>
+    </div>
+    <p>Say <span class="say">"Help"</span> any time to hear the full command list, and <span class="say">"Stop"</span> to interrupt Watchora when it is speaking.</p>
+
+    <h2>Keeping it working offline</h2>
+    <div class="step">
+      <p>The first time you open Watchora <strong>with internet</strong>, it quietly downloads its on-device helper models (about 60 MB, once). After that, hazard detection and reading work with no internet at all — on a bus, in a basement, anywhere. If you are ever unsure, open Watchora while connected once and you are set.</p>
+    </div>
+
+    <h2>If something goes wrong</h2>
+    <ul>
+      <li><strong>The app will not speak:</strong> check the phone's media volume (not just ringer volume). Say "Speak slower" if the voice is too fast to follow.</li>
+      <li><strong>The camera does not turn on:</strong> in your phone Settings → Apps → Watchora (or Safari → Settings for Websites → Camera), allow Camera and Microphone.</li>
+      <li><strong>Anything else:</strong> use the app's feedback entry or the public repository — accessibility problems are treated as urgent bugs.</li>
+    </ul>
+
+    <a class="back" href="/">← Back to Watchora</a>
+  </main>
+</body>
+</html>

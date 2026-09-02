@@ -7,13 +7,48 @@
 // (cache-on-success from normal browsing) rather than blocking `install`, which
 // keeps first paint fast on slow connections.
 
-const CACHE_NAME = 'watchora-shell-v3';
+const CACHE_NAME = 'watchora-shell-v4';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 // These are large and content-addressed-ish; we never want the SW to serve a stale
 // version of the app bundle, so the hashed Vite assets (assets/*) are cache-first
 // only within the lifetime of this cache version.
 const ML_ASSET_PREFIXES = ['/models/', '/ort/', '/tesseract/'];
+
+// The full offline capability (YOLO + onnxruntime + Tesseract eng data) is
+// ~60MB. A first-visit user who goes offline before touching the camera has
+// no hazard detection or OCR at all, because these were previously
+// cache-on-first-FETCH. Warming them in the background after install fixes
+// that without delaying first paint. Run at most once per cache version.
+async function warmMlAssets() {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    const already = await cache.keys('/models/yolov8n.onnx');
+    if (already.length) return; // warmed in this cache generation
+    const WARM_LIST = [
+      '/models/yolov8n.onnx',
+      // onnxruntime-web (actual files shipped in /ort)
+      '/ort/ort-wasm-simd-threaded.wasm',
+      '/ort/ort-wasm-simd-threaded.jsep.wasm',
+      '/ort/ort-wasm-simd-threaded.mjs',
+      '/ort/ort-wasm-simd-threaded.jsep.mjs',
+      // Tesseract.js (actual files shipped in /tesseract)
+      '/tesseract/worker.min.js',
+      '/tesseract/tesseract-core-simd-lstm.wasm.js',
+      '/tesseract/tesseract-core-simd-lstm.wasm',
+      '/tesseract/tesseract-core-simd-lstm.js',
+      '/tesseract/eng.traineddata.gz',
+    ];
+    for (const url of WARM_LIST) {
+      // Sequential: on slow mobile data, parallel 60MB bursts starve the UI.
+      await cache.add(url).catch(() => {
+        // A single missing optional file must not abort the rest of warming.
+      });
+    }
+  } catch {
+    // Warming is best-effort; cache-on-first-fetch remains the fallback path.
+  }
+}
 
 /**
  * Precaches the app shell AND all hashed bundle assets — the ones referenced
@@ -51,7 +86,10 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim()),
+      .then(() => self.clients.claim())
+      // After activation, pull the ML assets in the background so offline
+      // capability exists from the FIRST visit, not the first camera use.
+      .then(() => warmMlAssets()),
   );
 });
 
@@ -72,6 +110,28 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
+
+  // Google Fonts (cross-origin): stale-while-revalidate into the same cache so
+  // the app keeps its typography offline. Fonts are immutable (long cache
+  // headers), and the CSS is small; serving stale on first paint is fine.
+  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+    event.respondWith(
+      caches.match(request, { ignoreVary: true }).then((cached) => {
+        const network = fetch(request)
+          .then((response) => {
+            if (response.ok) {
+              const copy = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            }
+            return response;
+          })
+          .catch(() => cached || Response.error());
+        return cached ? (event.waitUntil(network.then(() => undefined)), cached) : network;
+      }),
+    );
+    return;
+  }
+
   if (url.origin !== self.location.origin) return; // never intercept API/cross-origin calls
 
   // Navigations: network-first with cached shell fallback (offline).

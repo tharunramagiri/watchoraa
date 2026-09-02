@@ -1,0 +1,52 @@
+# Deterministic production deploys: build the image on the VPS and roll the
+# swarm service on every push to main. Dokploy stays as the panel/UI of
+# record, but deploys no longer depend on its webhook delivery.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+          # Keep the connection alive across the multi-minute docker build.
+          printf 'Host deploy-vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/deploy_key\n  ServerAliveInterval 30\n  ServerAliveCountMax 20\n' \
+            "${{ secrets.DEPLOY_HOST }}" "${{ secrets.DEPLOY_USER }}" > ~/.ssh/config
+
+      - name: Rsync source to VPS
+        run: |
+          rsync -a --exclude node_modules --exclude .git --exclude dist \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            ./ deploy-vps:~/watchora-build/
+
+      - name: Build image on VPS
+        run: |
+          ssh deploy-vps 'cd ~/watchora-build && rm -f /tmp/watchora-build.log && nohup sh -c "docker build -t orazen-watchora-c1gnyj:latest . && echo __BUILD_OK__ >> /tmp/watchora-build.log || echo __BUILD_FAIL__ >> /tmp/watchora-build.log" > /dev/null 2>&1 & echo BUILD_STARTED'
+
+      - name: Wait for build to finish
+        run: |
+          ssh deploy-vps 'for i in $(seq 1 90); do grep -q "__BUILD_OK__" /tmp/watchora-build.log 2>/dev/null && echo BUILD_OK && exit 0; grep -q "__BUILD_FAIL__" /tmp/watchora-build.log 2>/dev/null && (echo BUILD_FAILED; tail -20 /tmp/watchora-build.log; exit 1); sleep 10; done; echo BUILD_TIMEOUT; exit 1'
+
+      - name: Roll swarm service
+        run: |
+          ssh deploy-vps 'docker service update --force --detach mjna70kuhhz7 && sleep 45 && docker ps --filter name=orazen-watchora --format "{{.Status}}" | head -1'
+
+      - name: Verify health
+        run: |
+          for i in 1 2 3 4 5; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 https://watchora.ramagiritharun.in/api/healthz || true)
+            if [ "$CODE" = "200" ]; then echo "healthz 200 — deploy verified"; exit 0; fi
+            sleep 20
+          done
+          echo "healthz did not return 200 in time"; exit 1

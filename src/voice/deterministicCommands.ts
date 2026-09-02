@@ -24,6 +24,18 @@ function extractDestination(text: string): string {
   return dest.length > 0 && dest.length <= 60 ? dest : '';
 }
 
+/** Extracts the text after the first matching trigger phrase (for object names). */
+function extractAfter(text: string, phrases: string[]): string {
+  for (const phrase of phrases) {
+    const idx = text.indexOf(phrase);
+    if (idx >= 0) {
+      const rest = text.slice(idx + phrase.length).replace(/^(the|my|a)\s+/, '').replace(/[.!?]+$/, '').trim();
+      if (rest) return rest.slice(0, 60);
+    }
+  }
+  return '';
+}
+
 function intent(intent: VoiceIntent['intent'], parameters: VoiceIntent['parameters'] = {}, requiresConfirmation = false, confidence = 0.99): VoiceIntent {
   return { intent, parameters, confidence, requiresConfirmation, deterministic: true };
 }
@@ -91,6 +103,39 @@ export function matchDeterministicCommand(transcript: string): VoiceIntent | nul
   // ── Shopping (before generic "read this") ──
   if (has(t, 'read this label', 'read the label', 'read this product', 'read the product', 'what does this cost', 'what is the price', 'check this product', 'read the barcode')) {
     return intent('shopping', {}, false, 1);
+  }
+  // ── Barcode scan (before generic "read this") ──
+  if (has(t, 'scan the barcode', 'scan barcode', 'scan this barcode', 'scan the product', 'scan product', 'read the barcode number', 'identify product by barcode', 'what is this product')) {
+    return intent('scan_product', {}, false, 1);
+  }
+
+  // ── Daily-living identification (copied from Seeing AI's most-used channels:
+  // Color, Currency; plus expiry-date reading for food/medicine) ──
+  if (has(t, 'what color is this', 'what colour is this', 'what color', 'what colour', 'tell me the color', 'tell me the colour', 'identify the color', 'identify the colour')) {
+    return intent('identify_color', {}, false, 1);
+  }
+  if (has(t, 'what money is this', 'which note is this', 'which bill is this', 'identify the money', 'identify this banknote', 'how much money is this', 'what note am i holding', 'what currency')) {
+    return intent('identify_currency', {}, false, 1);
+  }
+  if (has(t, 'read the expiry', 'read the expiration', 'what is the expiry', 'when does this expire', 'best before', 'use by date', 'read the date on this')) {
+    return intent('read_expiry', {}, false, 1);
+  }
+  if (has(t, 'is there enough light', 'how is the lighting', 'is it dark in here')) {
+    return intent('describe_scene', { focus: 'lighting' }, false, 0.9);
+  }
+  // Follow-up on the last analysis (Seeing AI "More info" pattern): works
+  // right after any scene/reading response, without re-capturing intent.
+  if (has(t, 'tell me more', 'what else', 'go deeper', 'more detail about the scene', 'anything else in the scene', 'what else do you see', 'describe more')) {
+    return intent('follow_up', {}, false, 0.9);
+  }
+  // ── Find-my-things: teach personal objects, then locate them by voice ──
+  if (has(t, 'teach this', 'remember this', 'remember this object', 'save this object')) {
+    const name = extractAfter(t, ['teach this as', 'teach this', 'remember this as', 'remember this', 'save this object as', 'save this object']) || 'my thing';
+    return intent('teach_thing', { name }, false, 0.95);
+  }
+  if (has(t, 'find my', "where is my", "where did i put my", "have you seen my")) {
+    const name = extractAfter(t, ['find my', 'where is my', 'where did i put my', 'have you seen my']) || '';
+    return intent('find_thing', { name }, false, name ? 0.95 : 0.8);
   }
 
   // ── Assistance ──

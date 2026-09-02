@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Our Commitment to You — Watchora</title>
+  <style>
+    :root { --ink: #1c1530; --muted: #5b5470; --panel: #f6f2ff; --accent: #6d28d9; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif; color: var(--ink); line-height: 1.6; background: #fffdf8; }
+    main { max-width: 44rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 .5rem; }
+    h2 { font-size: 1.25rem; margin-top: 2.25rem; }
+    p.updated { color: var(--muted); font-size: .9rem; margin-top: 0; }
+    .panel { background: var(--panel); border-radius: 16px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; }
+    ul { padding-left: 1.25rem; }
+    li { margin: .4rem 0; }
+    strong { color: var(--accent); }
+    a.back { display: inline-block; margin-top: 2rem; color: var(--accent); font-weight: 600; }
+    .skip { position: absolute; left: -9999px; }
+    .skip:focus { left: 1rem; top: 1rem; background: #fff; padding: .5rem 1rem; }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to main content</a>
+  <main id="main">
+    <h1>Our commitment to you</h1>
+    <p class="updated">Watchora is built with and for blind and low-vision people. This page states, in plain language, what you can count on from us — and what you should never count on Watchora for.</p>
+
+    <div class="panel">
+      <h2>1. Watchora helps. It never replaces your cane, dog, or training.</h2>
+      <p>Watchora is a secondary assistive tool. It does not replace a white cane, a guide dog, orientation and mobility training, official pedestrian signals, or emergency services. It never tells you a crossing is safe, and it never authorizes you to cross a road.</p>
+    </div>
+
+    <h2>2. We will not disappear on you.</h2>
+    <p>Assistive tools have been sunset by big companies before, leaving users stranded. Watchora is an independent project and we commit to:</p>
+    <ul>
+      <li><strong>Export everything.</strong> Your saved places, contacts, and reading history can be exported at any time — your data is yours.</li>
+      <li><strong>No silent shutdowns.</strong> If Watchora ever stops operating, we will give at least 6 months' notice inside the app and publish a full data export path.</li>
+      <li><strong>Open core.</strong> The perception and safety logic is reviewed in public; the safety rules that matter are deterministic and testable, not hidden prompt magic.</li>
+    </ul>
+
+    <h2>3. Your privacy is the default, not a setting.</h2>
+    <ul>
+      <li><strong>Hazard detection runs on your phone.</strong> The YOLO model processes camera frames on-device. Those frames never leave your phone.</li>
+      <li><strong>Scene descriptions use the network, and say so.</strong> When you ask Watchora to describe a scene or read low-confidence text, that frame is sent to our server for AI analysis. The response always tells you when AI was involved.</li>
+      <li><strong>Images are never stored.</strong> Frames sent for analysis are processed in memory and discarded. We log that a request happened, not what you looked at.</li>
+      <li><strong>Location is consent-gated twice.</strong> A caregiver can only see your live location when you enabled sharing for that contact AND that specific journey.</li>
+    </ul>
+
+    <h2>4. When we are not sure, we say so.</h2>
+    <p>Watchora speaks with calibrated confidence. When the AI is unsure, it says "I'm not fully sure, but…" and lowers its confidence. When the on-device detector is uncertain, it stays silent rather than guessing. False silence is safer than false certainty.</p>
+
+    <h2>5. Emergencies are deterministic, and we tell you what actually happened.</h2>
+    <p>The SOS flow is not AI. It is a deterministic, audited sequence. When you trigger SOS, we tell you which trusted contacts were notified and over which channel — we will never tell you someone was notified if the message did not go out.</p>
+
+    <h2>6. You can always reach a human.</h2>
+    <p>Questions, accessibility barriers, or a safety concern about Watchora itself: contact the team through the app's feedback entry, or file an issue on the public repository. Accessibility complaints are treated as priority bugs.</p>
+
+    <a class="back" href="/">← Back to Watchora</a>
+    <p><a class="back" href="/install-guide.html">New here? Read the step-by-step install guide →</a></p>
+  </main>
+</body>
+</html>

@@ -6,6 +6,7 @@
 // https://github.com/rany2/edge-tts/blob/master/src/edge_tts/drm.py
 
 import { createHash, randomUUID } from 'node:crypto';
+import { safeFetch } from '../../lib/safe-url.js';
 import WebSocket from 'ws';
 
 const TRUSTED_CLIENT_TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
@@ -53,7 +54,7 @@ function parseRfc2616Date(date: string): number | null {
 const VOICE_LIST_URL = `https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=${TRUSTED_CLIENT_TOKEN}`;
 
 export async function fetchVoiceList(): Promise<EdgeVoice[]> {
-  const res = await fetch(VOICE_LIST_URL, {
+  const res = await safeFetch(VOICE_LIST_URL, {
     headers: {
       'User-Agent': USER_AGENT,
       'Sec-MS-GEC': generateSecMsGec(nowMs()),

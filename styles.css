@@ -1147,7 +1147,7 @@ textarea:focus-visible {
 @media (max-width: 720px) {
   .app-shell {
     width: min(100vw - 12px, 1440px);
-    padding-bottom: 112px;
+    padding-bottom: 150px; /* clears the two-row bottom nav (≈140px) */
   }
 
   .sidebar {
@@ -1160,26 +1160,32 @@ textarea:focus-visible {
     right: 8px;
     bottom: 8px;
     display: block;
-    padding: 8px;
+    padding: 6px;
     border-radius: 22px;
     z-index: 30;
+    /* Two compact rows so ALL nine tabs stay visible on small screens:
+       row 1 = daily destinations, row 2 = admin/people/settings. The shell
+       padding-bottom below matches this height. */
+    max-height: 132px;
   }
 
   .bottom-nav-tablist {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
   }
 
   .bottom-nav-item {
-    padding: 10px 6px;
-    border-radius: 16px;
+    padding: 6px 4px;
+    border-radius: 14px;
     background: var(--color-lumen-stone);
     color: var(--text);
     display: grid;
-    gap: 2px;
+    gap: 1px;
     justify-items: center;
     text-align: center;
+    min-height: 52px;
+    align-content: center;
   }
 
   .bottom-nav-item.active {
@@ -1188,7 +1194,12 @@ textarea:focus-visible {
   }
 
   .bottom-nav-item strong {
-    font-size: 0.7rem;
+    font-size: 0.62rem;
+    line-height: 1.15;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .onboarding-grid {

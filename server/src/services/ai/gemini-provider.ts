@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { safeFetch } from '../../lib/safe-url.js';
 import { buildPrompt } from './prompt-builder.js';
 import { AiProviderError, type AiProvider, type AiRequest, type AiResult } from './types.js';
 
@@ -42,7 +43,7 @@ export class GeminiProvider implements AiProvider {
 
     let response: Response;
     try {
-      response = await fetch(
+      response = await safeFetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
         {
           method: 'POST',

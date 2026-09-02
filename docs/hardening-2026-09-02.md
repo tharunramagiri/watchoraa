@@ -60,3 +60,5 @@ Scope: full-stack audit remediation. Every finding below was reproduced in code,
 - ML assets (~60 MB) are cache-on-first-fetch, not precached — first-visit offline users lack YOLO/OCR.
 - Legacy `POST /api/journeys` still bypasses the one-active-journey invariant.
 - Status columns remain free-text strings (no enums).
+
+- Deploy verified live with persisted environment (2026-09-02).

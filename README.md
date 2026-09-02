@@ -3,14 +3,46 @@
 **Watchora is an AI-powered mobility and safety platform for blind and low-vision
 people.** Point the camera, pick a mode, and get a spoken description — backed
 by real accounts, trusted contacts, safe-journey monitoring, and a
-deterministic emergency system. See `docs/watchora-startup-plan.md` for the
-full startup master plan and `docs/watchora-audit-2026-08-06.md` for the
-running audit.
+deterministic emergency system. Live at https://watchora.ramagiritharun.in —
+see `docs/watchora-startup-plan.md` for the startup master plan,
+`docs/growth-plan-2026-09.md` for go-to-market, and
+`docs/hardening-2026-09-02.md` for the security audit + remediation log.
 
 > **Watchora is a secondary assistive tool. It does not replace a white cane,
 > guide dog, orientation and mobility training, official pedestrian signals or
 > emergency services.** It never claims a path is safe to cross, never
 > authorizes road crossing, and never detects "dangerous people."
+
+## What it does (v0.7 — Daily living, real safety delivery, emotional companion)
+
+- **Real SOS delivery** — triggering SOS emails (SMTP) and SMS-messages
+  (Twilio) every trusted contact, with per-channel delivery counts audited.
+  The app never says "your contact has been notified" unless the message
+  actually went out. Emergency acknowledgement is restricted to the user's
+  trusted contacts.
+- **Daily-living channels by voice** — `what money is this` (never guesses
+  between similar banknotes), `what color is this` (lighting caveats),
+  `read the expiry` (verbatim dates), `scan the barcode` (GS1 checksum
+  validation, OpenFoodFacts lookup through the server proxy, allergens +
+  sugar/salt spoken), and `tell me more` follow-up Q&A on the current scene.
+- **Find-my-things** — teach a personal object by voice ("teach this as my
+  wallet"), locate it later ("find my wallet") with a hard honesty contract:
+  the vision check must answer found/not-found and may never claim to see an
+  object that is not clearly in frame. Objects only — no people
+  identification, ever.
+- **Emotional companion** — deterministic, on-device support: feeling phrases
+  ("I'm scared", "I'm lost") get practical help and the emergency offer;
+  presence lines during journeys and post-SOS waits; frustration detection.
+  Never diagnostic, never interrupting safety speech.
+- **Screen-reader-first install guide** (`/install-guide.html`) and a
+  durability commitment page (`/commitment.html`).
+- **Security posture (hardening pass 2026-09-02)** — short-lived access
+  tokens (1h) with atomic refresh rotation + replay kill-switch, restricted
+  SOS acknowledgement, consent expiry enforcement, email delivery for
+  password reset, SSRF-guarded server fetches, global rate limiting, generic
+  5xx responses, real DB enums for statuses, TTL cleanup of token tables,
+  and a deterministic deploy pipeline with post-deploy health verification.
+  Full table in `docs/hardening-2026-09-02.md`.
 
 ## What it does (v0.6 — People awareness, ground-level hazards, motion cadence)
 

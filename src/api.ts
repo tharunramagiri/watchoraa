@@ -7,6 +7,17 @@ const TOKEN_KEY = 'watchora_token';
 const REFRESH_KEY = 'watchora_refresh';
 const USER_CACHE_KEY = 'watchora_user';
 
+/**
+ * Demo mode is an EXPLICIT build/run choice (VITE_DEMO_MODE=true, or toggled
+ * at runtime for local demos). Only demo builds may serve fabricated data;
+ * production builds must fail honestly instead of pretending a request
+ * succeeded — a blind user must never be told a feature worked when it
+ * didn't.
+ */
+export const DEMO_MODE =
+  import.meta.env.VITE_DEMO_MODE === 'true' ||
+  (typeof localStorage !== 'undefined' && localStorage.getItem('watchora_demo_mode') === 'true');
+
 export type PublicUser = {
   id: string;
   email: string;
@@ -328,67 +339,19 @@ function handleOfflineFallback<T>(path: string, options: RequestInit = {}): T {
     // ignore
   }
 
-  if (path === '/api/auth/login') {
-    const email = (body.email || '').trim().toLowerCase();
-    const password = (body.password || '').trim();
-    const match = DEMO_ACCOUNTS[email];
-    if (match) {
-      if (match.password === password) {
-        setSession(`demo-token-${match.user.role.toLowerCase()}`, `demo-refresh-${match.user.role.toLowerCase()}`);
-        setCachedUser(match.user);
-        return { token: `demo-token-${match.user.role.toLowerCase()}`, refreshToken: 'demo-refresh', user: match.user } as T;
-      }
-      throw new ApiError('Incorrect email or password', 401);
-    }
-    // Allow standard fallback login
-    const user: PublicUser = {
-      id: `usr_${Date.now()}`,
-      email: email || 'user@watchora.app',
-      fullName: (email ? email.split('@')[0] : 'Demo User'),
-      role: email.includes('admin') ? 'ADMIN' : email.includes('care') ? 'CAREGIVER' : 'BLIND_USER',
-      preferredLanguage: 'en',
-    };
-    setSession('demo-token', 'demo-refresh');
-    setCachedUser(user);
-    return { token: 'demo-token', refreshToken: 'demo-refresh', user } as T;
-  }
-
-  if (path === '/api/auth/signup') {
-    const email = (body.email || '').trim().toLowerCase();
-    const role: PublicUser['role'] = body.role || (email.includes('admin') ? 'ADMIN' : email.includes('care') ? 'CAREGIVER' : 'BLIND_USER');
-    const user: PublicUser = {
-      id: `usr_${Date.now()}`,
-      email: body.email || 'user@watchora.app',
-      fullName: body.fullName || (body.email ? body.email.split('@')[0] : 'User'),
-      role,
-      preferredLanguage: 'en',
-    };
-    setSession('demo-token', 'demo-refresh');
-    setCachedUser(user);
-    return { token: 'demo-token', refreshToken: 'demo-refresh', user } as T;
-  }
-
+  // ── Honest offline handling (always allowed, no demo flag needed) ──
+  // These use only real local state: the cached session or local settings.
   if (path === '/api/auth/me') {
-    const user = getCachedUser() || DEMO_ACCOUNTS['user@watchora.app'].user;
-    return { user } as T;
+    const user = getCachedUser();
+    if (user) return { user } as T;
+    throw new ApiError('You are offline. Please sign in again when you reconnect.', 503);
   }
-
   if (path === '/api/auth/logout') {
     clearSession();
     return { ok: true } as T;
   }
-
-  if (path === '/api/auth/forgot-password') {
-    return { ok: true, devToken: 'demo-reset-token-123' } as T;
-  }
-
-  if (path === '/api/auth/reset-password') {
-    const user = getCachedUser() || DEMO_ACCOUNTS['user@watchora.app'].user;
-    setSession('demo-token', 'demo-refresh');
-    return { ok: true, token: 'demo-token', refreshToken: 'demo-refresh', user } as T;
-  }
-
   if (path === '/api/preferences') {
+    // Preferences are genuinely stored locally; serving them offline is honest.
     if (method === 'GET') {
       const stored = localStorage.getItem('watchora_demo_prefs');
       const preferences = stored
@@ -412,6 +375,53 @@ function handleOfflineFallback<T>(path: string, options: RequestInit = {}): T {
     const updated = { ...current, ...body };
     localStorage.setItem('watchora_demo_prefs', JSON.stringify(updated));
     return { preferences: updated } as T;
+  }
+  if (path === '/api/tts/voices') {
+    // Static voice catalog bundled with the app — config, not user data.
+    return handleDemoVoices<T>();
+  }
+
+  // ── Everything else: fabricated data is ONLY available in explicit demo builds ──
+  if (!DEMO_MODE) {
+    throw new ApiError(
+      navigator.onLine === false
+        ? 'You are offline. This action needs a connection — it will work again when you reconnect.'
+        : 'The Watchora service is not reachable right now. Please try again shortly.',
+      503,
+    );
+  }
+
+  if (path === '/api/auth/login') {
+    // Demo mode serves ONLY the three published demo accounts — never an
+    // inferred role for arbitrary emails (same contract as the Vercel demo fn).
+    const email = (body.email || '').trim().toLowerCase();
+    const password = (body.password || '').trim();
+    const match = DEMO_ACCOUNTS[email];
+    if (match && match.password === password) {
+      setSession(`demo-token-${match.user.role.toLowerCase()}`, `demo-refresh-${match.user.role.toLowerCase()}`);
+      setCachedUser(match.user);
+      return { token: `demo-token-${match.user.role.toLowerCase()}`, refreshToken: 'demo-refresh', user: match.user } as T;
+    }
+    throw new ApiError('Incorrect email or password', 401);
+  }
+
+  if (path === '/api/auth/signup') {
+    const user: PublicUser = {
+      id: `usr_${Date.now()}`,
+      email: body.email || 'user@watchora.app',
+      fullName: body.fullName || (body.email ? body.email.split('@')[0] : 'User'),
+      role: 'BLIND_USER',
+      preferredLanguage: 'en',
+    };
+    setSession('demo-token', 'demo-refresh');
+    setCachedUser(user);
+    return { token: 'demo-token', refreshToken: 'demo-refresh', user } as T;
+  }
+
+  if (path === '/api/auth/reset-password') {
+    const user = getCachedUser() || DEMO_ACCOUNTS['user@watchora.app'].user;
+    setSession('demo-token', 'demo-refresh');
+    return { ok: true, token: 'demo-token', refreshToken: 'demo-refresh', user } as T;
   }
 
   if (path === '/api/contacts') {
@@ -548,8 +558,17 @@ function handleOfflineFallback<T>(path: string, options: RequestInit = {}): T {
   if (path === '/api/admin/assistance') return { requests: [] } as T;
   if (path.startsWith('/api/audit-logs')) return { logs: [] } as T;
   if (path === '/api/caregiver/overview') return { peopleCount: 1, openSosCount: 0, recentJourneys: [], contacts: [] } as T;
-  if (path === '/api/tts/voices') {
-    const list: TtsVoice[] = [
+  if (path === '/api/safe-journey/active') return { journey: null } as T;
+  if (path === '/api/emergency/active') return { session: null } as T;
+  if (path === '/api/ai/intent') {
+    return { intent: 'navigate', parameters: {}, confidence: 0.95, requiresConfirmation: false } as T;
+  }
+
+  return {} as T;
+}
+
+function handleDemoVoices<T>(): T {
+  const list: TtsVoice[] = [
       { shortName: 'en-US-JennyNeural', locale: 'en-US', language: 'English (US)', native: 'English (US)', gender: 'Female' },
       { shortName: 'en-US-GuyNeural', locale: 'en-US', language: 'English (US)', native: 'English (US)', gender: 'Male' },
       { shortName: 'en-GB-LibbyNeural', locale: 'en-GB', language: 'English (UK)', native: 'English (UK)', gender: 'Female' },
@@ -573,15 +592,7 @@ function handleOfflineFallback<T>(path: string, options: RequestInit = {}): T {
       { shortName: 'fr-FR-DeniseNeural', locale: 'fr-FR', language: 'French', native: 'Français', gender: 'Female' },
       { shortName: 'de-DE-KatjaNeural', locale: 'de-DE', language: 'German', native: 'Deutsch', gender: 'Female' },
     ];
-    return { voices: list, count: list.length } as T;
-  }
-  if (path === '/api/safe-journey/active') return { journey: null } as T;
-  if (path === '/api/emergency/active') return { session: null } as T;
-  if (path === '/api/ai/intent') {
-    return { intent: 'navigate', parameters: {}, confidence: 0.95, requiresConfirmation: false } as T;
-  }
-
-  return {} as T;
+  return { voices: list, count: list.length } as T;
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -644,6 +655,8 @@ export const api = {
     request<{ contact: TrustedContact }>('/api/contacts', { method: 'POST', body: JSON.stringify(input) }),
   updateContact: (id: string, input: { canSeeLocation?: boolean; canReceiveAlerts?: boolean }) =>
     request<{ contact: TrustedContact }>(`/api/contacts/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  inviteContact: (id: string) =>
+    request<{ ok: boolean; delivery: 'email' | 'failed' | 'unconfigured' }>(`/api/contacts/${id}/invite`, { method: 'POST' }),
   deleteContact: (id: string) => request<void>(`/api/contacts/${id}`, { method: 'DELETE' }),
 
   listPlaces: () => request<{ places: SavedPlace[] }>('/api/places'),
@@ -701,6 +714,20 @@ export const api = {
     request<{ incident: IncidentReport }>(`/api/admin/incidents/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 
   ttsVoices: () => request<{ voices: TtsVoice[]; count: number }>('/api/tts/voices'),
+  /** Barcode product lookup (OpenFoodFacts via server proxy). */
+  productLookup: (barcode: string) =>
+    request<{ barcode: string; product: { found: boolean; name?: string; brand?: string; quantity?: string; ingredientsText?: string; nutriments?: Record<string, unknown>; allergens?: string[] }; cached: boolean }>(
+      `/api/products/${encodeURIComponent(barcode)}`,
+    ),
+  /** Find-my-things: user-taught personal objects. */
+  listThings: (q?: string) =>
+    request<{ things: Array<{ id: string; name: string; description: string }> }>(`/api/things${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  createThing: (name: string, description: string) =>
+    request<{ thing: { id: string; name: string; description: string }; updated?: boolean }>('/api/things', {
+      method: 'POST',
+      body: JSON.stringify({ name, description }),
+    }),
+  deleteThing: (id: string) => request<void>(`/api/things/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   /** Synthesizes speech to a playable object URL (backend neural TTS). */
   ttsAudioUrl: async (text: string, voice: string, rate = 1): Promise<string> => {
     const token = getToken();

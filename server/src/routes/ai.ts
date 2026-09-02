@@ -3,10 +3,11 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { env } from '../env.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
+import { safeFetch } from '../lib/safe-url.js';
 import { requireAuth } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { getAiProvider, AiProviderError, type AiMode } from '../services/ai/ai-provider.js';
-import { buildPrompt } from '../services/ai/prompt-builder.js';
+import { buildPrompt, buildPromptWithOverride } from '../services/ai/prompt-builder.js';
 
 export const aiRouter = Router();
 
@@ -113,6 +114,9 @@ export const SAFE_AI_INTENTS = [
   'list_places',
   'save_place',
   'shopping',
+  'identify_color',
+  'identify_currency',
+  'read_expiry',
   'help',
 ];
 
@@ -141,7 +145,7 @@ aiRouter.post(
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(
+      const res = await safeFetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
         {
           method: 'POST',
@@ -205,7 +209,9 @@ aiRouter.post(
     }
 
     // Prompt versioning: if an admin activated a custom prompt for this mode,
-    // prefer it over the built-in prompt (safety teams can tune per mode).
+    // use it as the instruction block — but ALWAYS composed with the safety
+    // contract and response shape (buildPromptWithOverride appends them after
+    // the override, so an admin prompt can never remove the guardrails).
     let resolvedPrompt = buildPrompt(mode, prompt);
     let promptVersion: number | null = null;
     try {
@@ -214,7 +220,7 @@ aiRouter.post(
         orderBy: { version: 'desc' },
       });
       if (active) {
-        resolvedPrompt = active.prompt;
+        resolvedPrompt = buildPromptWithOverride(mode, prompt, active.prompt);
         promptVersion = active.version;
       }
     } catch {

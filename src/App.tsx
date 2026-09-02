@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError, getToken, getRefreshToken, setSession, clearSession, setToken, localeFromVoice, getCachedUser, setCachedUser } from './api';
+import { scanBarcode, cachedProduct, rememberProduct, formatProductSpeech, type ScanHandle } from './barcode/productScan';
 import type {
   AdminAssistanceRequest,
   AdminIncident,
@@ -456,6 +457,8 @@ function MainApp({
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
   const ttsUrlRef = useRef<string | null>(null);
   const speakSeqRef = useRef(0);
+  // Active barcode scan (so a new scan stops the previous loop).
+  const productScanRef = useRef<ScanHandle | null>(null);
   const speechManagerRef = useRef<SpeechPriorityManager | null>(null);
   const lastSpokenRef = useRef('');
   // Tracks how many utterances are currently playing so the voice provider
@@ -727,6 +730,118 @@ function MainApp({
         setAnalysisMode('reading');
         void voiceCaptureAndAnalyze('reading', 'Read the text visible in this image aloud, word for word.');
         break;
+      case 'identify_color':
+        tab('tracking');
+        setAnalysisMode('assistant');
+        void voiceCaptureAndAnalyze('assistant', 'Identify the main color of the object in the center of this image. If the lighting makes it uncertain, say which colors it could be. One short sentence.');
+        break;
+      case 'identify_currency':
+        tab('tracking');
+        setAnalysisMode('assistant');
+        void voiceCaptureAndAnalyze('assistant', 'This image shows money (a banknote or coin). Identify its denomination and currency. Note that lighting can mislead: tell me the visual marks you based this on. Never guess between two similar denominations.');
+        break;
+      case 'read_expiry':
+        tab('tracking');
+        setAnalysisMode('assistant');
+        void voiceCaptureAndAnalyze('assistant', 'Find and read any expiry date, best-before date, or use-by date in this image. Read the date exactly as written. If no date is visible, say so plainly.');
+        break;
+      case 'scan_product': {
+        tab('tracking');
+        const runScan = async () => {
+          if (!('geolocation' in navigator)) return; // unreachable guard; camera check below matters
+          if (!videoRef.current) {
+            speak('Turn on the camera first, then say scan the barcode again.', 5, 'scan-no-camera');
+            return;
+          }
+          speak('Hold the camera steady over the barcode.', 5, 'scan-start');
+          try {
+            const handle = await scanBarcode(
+              videoRef.current,
+              (code) => {
+                void navigator.vibrate?.(80);
+                speak('Scanned. Looking up the product.', 5, 'scan-found');
+                const cached = cachedProduct(code);
+                const lookup = cached
+                  ? Promise.resolve({ product: cached, cached: true })
+                  : api
+                      .productLookup(code)
+                      .then((r) => {
+                        if (r.product.found) rememberProduct(code, r.product);
+                        return r;
+                      });
+                lookup
+                  .then((r) => speak(formatProductSpeech(r.product), 5, `scan-${code}`))
+                  .catch(() => speak('The product database is not reachable right now. You can say read this to have the label read aloud instead.', 5, 'scan-error'));
+              },
+              25_000,
+            );
+            productScanRef.current = handle;
+          } catch {
+            speak('Barcode scanning is not supported on this browser. You can say read this to have the label read aloud instead.', 5, 'scan-unsupported');
+          }
+        };
+        if (cameraActive) {
+          void runScan();
+        } else {
+          void (async () => {
+            await startCamera();
+            await runScan();
+          })();
+        }
+        break;
+      }
+      case 'teach_thing': {
+        tab('tracking');
+        setAnalysisMode('assistant');
+        const thingName = String(params.name || 'my thing');
+        speak(`Learning ${thingName}. Hold it steady in the camera.`, 5, `teach-start-${thingName}`);
+        void voiceCaptureAndAnalyze('assistant', `Describe this object in one short reusable description for recognition: its most distinctive visual features (color, shape, material, markings). No speculation.`);
+        const stopWatchingTeach = setInterval(() => {
+          const latest = aiResult;
+          if (latest?.summary && !isAnalyzing) {
+            clearInterval(stopWatchingTeach);
+            void api
+              .createThing(thingName, `${latest.summary} ${latest.details?.[0] ?? ''}`.trim())
+              .then((r) => speak(`${r.updated ? 'Updated' : 'Learned'} ${thingName}. Say find my ${thingName} any time.`, 5, `teach-done-${thingName}`))
+              .catch(() => speak('I could not save that object. Please try again.', 5, 'teach-error'));
+          }
+        }, 1200);
+        setTimeout(() => clearInterval(stopWatchingTeach), 30_000);
+        break;
+      }
+      case 'find_thing': {
+        tab('tracking');
+        const target = String(params.name || '').trim();
+        if (!target) {
+          speak('What is the object called?', 5, 'find-noname');
+          break;
+        }
+        api
+          .listThings(target)
+          .then(async (r) => {
+            const match = r.things[0];
+            if (!match) {
+              speak(`I do not know ${target} yet. Point the camera at it and say, teach this as ${target}.`, 5, `find-unknown-${target}`);
+              return;
+            }
+            setAnalysisMode('assistant');
+            speak(`Looking for ${target}.`, 5, `find-start-${target}`);
+            await voiceCaptureAndAnalyze('assistant', `You are looking for the user's personal object called "${match.name}", previously described as: "${match.description}". Is that exact object visible in this image now? If yes, say "Found" and give its direction (left, right, ahead) and approximate distance if visually estimable. If it is not clearly present, say "Not found" and do not guess.`);
+          })
+          .catch(() => speak('I could not check your taught objects.', 5, 'find-error'));
+        break;
+      }
+      case 'follow_up': {        tab('tracking');
+        setAnalysisMode('assistant');
+        const prior = aiResult;
+        if (!prior) {
+          speak('Nothing to add yet — point the camera and say describe what is ahead first.', 5, 'followup-empty');
+          break;
+        }
+        const context = `Earlier you described this scene as: "${prior.summary}". The user wants MORE detail about the same scene, not a repeat. Describe what you did NOT mention before: background objects, signage, people and their direction of movement, or anything relevant beyond the first answer. Keep it under three sentences.`;
+        void voiceCaptureAndAnalyze('assistant', context);
+        break;
+      }
       case 'start_safe_journey':
         tab('journey');
         if (params.destination) {

@@ -86,3 +86,30 @@ export async function sendEmergencyAlertEmail(to: string, personName: string, ki
   ];
   return sendMail(to, subject, lines.join('\n'), `<p>${lines.join('<br/>')}</p>`, EMERGENCY_FROM);
 }
+
+/**
+ * Invites someone to become a caregiver for a Watchora user. The link lands
+ * on the signup page; when they register with this email, the user's existing
+ * TrustedContact row (matched case-insensitively) connects them automatically.
+ */
+export async function sendCaregiverInviteEmail(to: string, personName: string): Promise<boolean> {
+  const base = process.env.PUBLIC_APP_URL ?? '';
+  const signupUrl = `${base}/signup`;
+  const subject = `${personName} invited you to their care circle on Watchora`;
+  const lines = [
+    `${personName} has listed you as a trusted contact in Watchora, an assistive app for blind and low-vision people.`,
+    '',
+    `As their caregiver you can see their live location during journeys (with their explicit consent) and receive their SOS alerts.`,
+    '',
+    `Create your free account with this email address to connect: ${signupUrl}`,
+    '',
+    'If you were not expecting this, you can safely ignore this email.',
+  ];
+  const html = [
+    `<p>${personName} has listed you as a trusted contact in Watchora, an assistive app for blind and low-vision people.</p>`,
+    `<p>As their caregiver you can see their live location during journeys (with their explicit consent) and receive their SOS alerts.</p>`,
+    `<p><a href="${signupUrl}">Create your free account</a> with this email address to connect.</p>`,
+    '<p>If you were not expecting this, you can safely ignore this email.</p>',
+  ].join('\n');
+  return sendMail(to, subject, lines.join('\n'), html);
+}

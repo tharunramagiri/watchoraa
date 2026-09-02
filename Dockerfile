@@ -30,6 +30,9 @@ FROM node:20-alpine AS runtime
 WORKDIR /app
 RUN apk add --no-cache openssl
 ENV NODE_ENV=production
+# The Dokploy domain (watchora.ramagiritharun.in) maps to container port
+# 3000; the server reads PORT at boot. Change here if the domain port changes.
+ENV PORT=3000
 
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev
@@ -40,5 +43,5 @@ RUN npx prisma generate
 COPY --from=backend-build /app/dist ./dist
 COPY --from=frontend-build /app/dist ./public-web
 
-EXPOSE 4000
+EXPOSE 3000
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]

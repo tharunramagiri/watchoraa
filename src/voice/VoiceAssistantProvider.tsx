@@ -11,6 +11,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CommandRouter, LOW_CONFIDENCE_MESSAGE } from './commandRouter';
+import { matchDeterministicCommand } from './deterministicCommands';
+import { matchFeelingPhrase } from './companion';
+import { EMERGENCY_PRIORITY_INTENTS } from './voiceTypes';
 import { ConfirmationManager } from './confirmationManager';
 import { DEFAULT_VOICE_SETTINGS, isHandsFree, HANDS_FREE_ONBOARDING, MIC_PERMISSION_REQUEST, type VoiceIntent, type VoiceSettings } from './voiceTypes';
 import { loadVoiceSettings, saveVoiceSettings } from './voiceSettingsStorage';
@@ -239,6 +242,20 @@ export function VoiceAssistantProvider({ children, onCommand, speak: speakProp, 
   const runCommand = useCallback(
     async (text: string) => {
       setState('processing');
+      // Emotional companion: opt-in feeling phrases are matched locally
+      // (deterministic, never sent to AI) and answered before the command
+      // router sees them — "I'm scared" must never be treated as an unknown
+      // command. Safety commands still win: if the transcript ALSO matches a
+      // deterministic safety intent, the router path takes precedence below.
+      const feeling = matchFeelingPhrase(text);
+      const deterministicSafety = matchDeterministicCommand(text);
+      const isSafetyCommand = deterministicSafety && EMERGENCY_PRIORITY_INTENTS.includes(deterministicSafety.intent);
+      if (feeling && !isSafetyCommand) {
+        speakRef.current(feeling.text, feeling.priority);
+        setLastIntent({ intent: 'help', parameters: { companion: 'feeling' }, confidence: 1, requiresConfirmation: false, deterministic: true });
+        setState('idle');
+        return;
+      }
       const intent = await router.route(text);
       setLastIntent(intent);
       if (confirmation.handleConfirmIntent(intent)) {
